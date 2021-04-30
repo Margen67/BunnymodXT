@@ -5,6 +5,7 @@ on:
   pull_request:
   schedule:
     - cron: '0 0 1 * *' # Monthly
+  workflow_dispatch:
 
 jobs:
   build-linux:
@@ -14,96 +15,82 @@ jobs:
       fail-fast: false
       matrix:
         configuration: [Release, Debug]
-
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install g++-multilib libboost-dev mesa-common-dev ninja-build
-
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        target: i686-unknown-linux-gnu
-        override: true
-
-    - name: Generate the build system
-      run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
-
-    - name: Build
-      run: cmake --build build
-
-    - uses: actions/upload-artifact@v2
-      with:
-        name: BunnymodXT-${{ runner.os }}-${{ matrix.configuration }}
-        path: build/libBunnymodXT.so
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install g++-multilib libboost-dev libgl-dev ninja-build
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: i686-unknown-linux-gnu
+          override: true
+      - name: Generate the build system
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+      - name: Build
+        working-directory: build
+        run: cmake --build .
+      - uses: actions/upload-artifact@v2
+        with:
+          name: BunnymodXT-${{ runner.os }}-${{ matrix.configuration }}
+          path: build/libBunnymodXT.so
+          if-no-files-found: error
 
   build-flatpak:
     name: Build under Flatpak
     runs-on: ubuntu-latest
-
     container:
       image: bilelmoussaoui/flatpak-github-actions:freedesktop-20.08
       options: --privileged
-
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-
-    - uses: bilelmoussaoui/flatpak-github-actions/flatpak-builder@v3
-      with:
-        manifest-path: build-aux/flatpak/rs.bxt.BunnymodXT.json
-        cache-key: flatpak-builder-${{ github.sha }}
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: bilelmoussaoui/flatpak-github-actions/flatpak-builder@v3
+        with:
+          manifest-path: build-aux/flatpak/rs.bxt.BunnymodXT.json
+          cache-key: flatpak-builder-${{ github.sha }}
 
   build-windows:
     name: Build on Windows (${{ matrix.configuration }})
-    runs-on: windows-2019
-
+    runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
         configuration: [Release, Debug]
-
     env:
       BOOST_ROOT: ${{ github.workspace }}/3rdparty/boost
-
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        target: i686-pc-windows-msvc
-        override: true
-
-    - name: Install Boost
-      run: |
-        # https://github.com/actions/virtual-environments/issues/2667#issuecomment-800317643
-        mkdir -p ${env:BOOST_ROOT}
-        (New-Object System.Net.WebClient).DownloadFile("https://sourceforge.net/projects/boost/files/boost/1.72.0/boost_1_72_0.zip/download", "${env:BOOST_ROOT}\download.zip")
-        Add-Type -Assembly "System.IO.Compression.Filesystem"
-        [System.IO.Compression.ZipFile]::ExtractToDirectory("${env:BOOST_ROOT}\download.zip", "${env:BOOST_ROOT}")
-        cd ${env:BOOST_ROOT} 
-        cp -r boost_*/* .
-
-    - name: Generate the build system
-      run: cmake -B build -A Win32
-
-    - name: Build
-      run: cmake --build build --config ${{ matrix.configuration }} -j $env:NUMBER_OF_PROCESSORS
-
-    - uses: actions/upload-artifact@v2
-      with:
-        name: BunnymodXT-${{ runner.os }}-${{ matrix.configuration }}
-        path: build\${{ matrix.configuration }}\BunnymodXT.dll
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: i686-pc-windows-msvc
+          override: true
+      - name: Install Boost
+        run: | # https://github.com/actions/virtual-environments/issues/2667#issuecomment-800317643
+          mkdir -p ${env:BOOST_ROOT}
+          ${boost_version_minor}="72"
+          ${boost_zip}="boost_1_${boost_version_minor}_0.zip"
+          curl -fLJO "https://sourceforge.net/projects/boost/files/boost/1.${boost_version_minor}.0/${boost_zip}/download"
+          7z e $boost_zip ${env:BOOST_ROOT]
+          cp -r ${env:BOOST_ROOT}/boost_*/* ${env:BOOST_ROOT}
+      - name: Generate the build system
+        run: cmake -B build -A Win32
+      - name: Build
+        working-directory: build
+        run: cmake --build . --config ${{ matrix.configuration }} -j $env:NUMBER_OF_PROCESSORS
+      - uses: actions/upload-artifact@v2
+        with:
+          name: BunnymodXT-${{ runner.os }}-${{ matrix.configuration }}
+          path: build\${{ matrix.configuration }}\BunnymodXT.dll
+          if-no-files-found: error
