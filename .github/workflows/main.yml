@@ -33,8 +33,7 @@ jobs:
       - name: Generate the build system
         run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
       - name: Build
-        working-directory: build
-        run: cmake --build .
+        run: cmake --build build
       - uses: actions/upload-artifact@v2
         with:
           name: BunnymodXT-${{ runner.os }}-${{ matrix.configuration }}
