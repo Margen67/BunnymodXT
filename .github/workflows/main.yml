@@ -82,7 +82,7 @@ jobs:
           ${boost_zip}="boost_1_${boost_version_minor}_0.zip"
           curl -fLJO "https://sourceforge.net/projects/boost/files/boost/1.${boost_version_minor}.0/${boost_zip}/download"
           7z e $boost_zip ${env:BOOST_ROOT]
-          cp -r ${env:BOOST_ROOT}/boost_*/* ${env:BOOST_ROOT}
+          Copy-Item -Recurse -Force "${env:BOOST_ROOT}/boost_*/*" "${env:BOOST_ROOT}"
       - name: Generate the build system
         run: cmake -B build -A Win32
       - name: Build
