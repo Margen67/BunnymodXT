@@ -63,7 +63,7 @@ jobs:
       matrix:
         configuration: [Release, Debug]
     env:
-      BOOST_ROOT: ${{ github.workspace }}/3rdparty/boost
+      POWERSHELL_TELEMETRY_OPTOUT: 1
     steps:
       - uses: actions/checkout@v2
         with:
@@ -76,13 +76,9 @@ jobs:
           target: i686-pc-windows-msvc
           override: true
       - name: Install Boost
-        run: | # https://github.com/actions/virtual-environments/issues/2667#issuecomment-800317643
-          mkdir -p ${env:BOOST_ROOT}
-          ${boost_version_minor}="72"
-          ${boost_zip}="boost_1_${boost_version_minor}_0.zip"
-          curl -fLJO "https://sourceforge.net/projects/boost/files/boost/1.${boost_version_minor}.0/${boost_zip}/download"
-          7z e $boost_zip ${env:BOOST_ROOT}
-          Copy-Item -Recurse -Force "${env:BOOST_ROOT}/boost_*/*" ${env:BOOST_ROOT}
+        uses: MarkusJx/install-boost@v1.0.1
+        with:
+          boost_version: 1.72.0
       - name: Generate the build system
         run: cmake -B build -A Win32
       - name: Build
